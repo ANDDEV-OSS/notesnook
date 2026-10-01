@@ -24,13 +24,15 @@ import { AppEventManager, AppEvents } from "../app-events";
 import { TaskScheduler } from "../../utils/task-scheduler";
 import { checkForUpdate } from "../../utils/updater";
 import { store as settingStore } from "../../stores/setting-store";
+import { IS_POPOUT_WINDOW } from "../../utils/popout";
 
 export const desktop: ReturnType<typeof createTRPCProxyClient<AppRouter>> =
   createTRPCProxyClient<AppRouter>({
     links: [ipcLink()]
   });
 
-attachListeners();
+// updates & app links are only handled by the main window
+if (!IS_POPOUT_WINDOW) attachListeners();
 function attachListeners() {
   console.log("attaching listeners");
 

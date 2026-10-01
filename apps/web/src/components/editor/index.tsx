@@ -123,7 +123,8 @@ export async function saveContent(
 }
 const deferredSave = debounceWithId(saveContent, 100);
 
-export default function TabsView() {
+export default function TabsView(props: { hideActionBar?: boolean }) {
+  const { hideActionBar } = props;
   const tabs = useEditorStore((store) => store.tabs);
   const documentPreview = useEditorStore((store) => store.documentPreview);
   const activeTabId = useEditorStore((store) => store.activeTabId);
@@ -147,17 +148,19 @@ export default function TabsView() {
           flexDirection: "column"
         }}
       >
-        <Flex
-          className="editor-action-bar"
-          sx={{
-            zIndex: 2,
-            height: TITLE_BAR_HEIGHT,
-            bg: "background-secondary"
-            // borderBottom: "1px solid var(--border)"
-          }}
-        >
-          <EditorActionBar />
-        </Flex>
+        {hideActionBar ? null : (
+          <Flex
+            className="editor-action-bar"
+            sx={{
+              zIndex: 2,
+              height: TITLE_BAR_HEIGHT,
+              bg: "background-secondary"
+              // borderBottom: "1px solid var(--border)"
+            }}
+          >
+            <EditorActionBar />
+          </Flex>
+        )}
         <SplitPane
           style={{
             position: "relative"

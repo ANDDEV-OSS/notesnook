@@ -27,6 +27,7 @@ import { deriveKey, useKeyStore } from "../interfaces/key-store";
 import { hosts, SubscriptionPlan, SubscriptionStatus } from "@notesnook/core";
 import Config from "../utils/config";
 import { FileStorage } from "../interfaces/fs";
+import { IS_POPOUT_WINDOW } from "../utils/popout";
 
 function getHostUrl(hostUrl: keyof typeof hosts, defaultUrl: string) {
   if (IS_TESTING) return defaultUrl;
@@ -40,6 +41,9 @@ async function initializeDatabase(persistence: DatabasePersistence) {
 
   let databaseKey = await useKeyStore.getState().getValue("databaseKey");
   if (!databaseKey) {
+    // popouts share the main window's database so they must never create
+    // a new key
+    if (IS_POPOUT_WINDOW) throw new Error("Database key not found.");
     databaseKey = await deriveKey(generatePassword());
     await useKeyStore.getState().setValue("databaseKey", databaseKey);
   }
@@ -90,7 +94,9 @@ async function initializeDatabase(persistence: DatabasePersistence) {
         persistence === "memory"
           ? undefined
           : Buffer.from(databaseKey).toString("hex"),
-      skipInitialization: !IS_DESKTOP_APP && multiTab
+      // popouts share the database connection already set up by the main
+      // window
+      skipInitialization: (!IS_DESKTOP_APP && multiTab) || IS_POPOUT_WINDOW
     },
     storage: storage,
     eventsource: EventSource,

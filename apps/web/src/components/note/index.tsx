@@ -81,6 +81,7 @@ import {
   Markdown,
   Notebook,
   OpenInNew,
+  OpenInNewWindow,
   PDF,
   Pin,
   Text as Plaintext,
@@ -100,6 +101,7 @@ import {
   Trash,
   Update
 } from "../icons";
+import { openNoteInNewWindow } from "../../common/popout";
 import { Context } from "../list-container/types";
 import ListItem from "../list-item";
 import { PublishDialog } from "../publish-view";
@@ -365,6 +367,14 @@ export const noteMenuItems: (
       icon: OpenInNew.path,
       onClick: () =>
         useEditorStore.getState().openSession(note.id, { openInNewTab: true })
+    },
+    {
+      type: "button",
+      key: "openinnewwindow",
+      title: strings.openInNewWindow(),
+      icon: OpenInNewWindow.path,
+      isHidden: !IS_DESKTOP_APP || !!context?.locked,
+      onClick: () => openNoteInNewWindow(note.id)
     },
     {
       type: "button",

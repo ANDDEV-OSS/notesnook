@@ -35,6 +35,7 @@ import { Text } from "@theme-ui/components";
 import { EV, EVENTS } from "@notesnook/core";
 import { useEffect, useState } from "react";
 import { isAuthRoute } from "./navigation/auth-routes";
+import { IS_POPOUT_WINDOW } from "./utils/popout";
 
 export async function startApp(children?: React.ReactNode) {
   const rootElement = document.getElementById("root");
@@ -43,6 +44,8 @@ export async function startApp(children?: React.ReactNode) {
 
   window.hasNativeTitlebar =
     !IS_DESKTOP_APP ||
+    // popout windows always use the native frame
+    IS_POPOUT_WINDOW ||
     !!(await desktop?.integration.desktopIntegration
       .query()
       ?.then((s) => s.nativeTitlebar));

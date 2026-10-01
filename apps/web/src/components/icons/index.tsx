@@ -218,6 +218,7 @@ import {
   mdiBroom,
   mdiServerSecurity,
   mdiOpenInNew,
+  mdiDockWindow,
   mdiTagOutline,
   mdiChatQuestionOutline,
   mdiNoteRemoveOutline,
@@ -574,6 +575,7 @@ export const WindowRestore = createIcon(
 export const WindowClose = createIcon(mdiWindowClose);
 export const ClearCache = createIcon(mdiBroom);
 export const OpenInNew = createIcon(mdiOpenInNew);
+export const OpenInNewWindow = createIcon(mdiDockWindow);
 export const Coupon = createIcon(mdiTagOutline);
 export const Support = createIcon(mdiChatQuestionOutline);
 export const NewTab = createIcon(mdiTabPlus);

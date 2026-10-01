@@ -102,6 +102,10 @@ const routes = {
     component: () => import("./views/auth"),
     props: { route: "login:email" }
   },
+  "/popout": {
+    component: () => import("./views/popout"),
+    props: null
+  },
   default: { component: () => import("./app"), props: null }
 } as const;
 

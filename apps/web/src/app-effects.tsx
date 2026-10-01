@@ -37,6 +37,7 @@ import { registerKeyMap } from "./common/key-map";
 import { updateStatus, removeStatus, getStatus } from "./hooks/use-status";
 import { hashNavigate, navigate } from "./navigation";
 import { desktop } from "./common/desktop-bridge";
+import { attachPopoutListeners } from "./common/popout";
 import { FeatureDialog } from "./dialogs/feature-dialog";
 import { AnnouncementDialog } from "./dialogs/announcement-dialog";
 import { logger } from "./utils/logger";
@@ -234,6 +235,7 @@ async function attachDesktopListeners() {
     AppEventManager.subscribe(AppEvents.onCreateItem, onCreateItem),
     AppEventManager.subscribe(AppEvents.onOpenLink, handleInternalLink)
   ];
+  attachPopoutListeners();
 
   await desktop?.bridge.ready.query();
   return handlers;

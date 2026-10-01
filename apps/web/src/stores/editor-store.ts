@@ -54,6 +54,8 @@ import Vault from "../common/vault";
 import { Mutex } from "async-mutex";
 import { useEditorManager } from "../components/editor/manager";
 import { Context } from "../components/list-container/types";
+import { desktop } from "../common/desktop-bridge";
+import { IS_POPOUT_WINDOW, poppedOutNoteIds } from "../utils/popout";
 
 export enum SaveState {
   NotSaved = -1,
@@ -704,6 +706,11 @@ class EditorStore extends BaseStore<EditorStore> {
       addTab
     } = this.get();
     const noteId = typeof noteOrId === "string" ? noteOrId : noteOrId.id;
+    // a note open in a popout window must not be edited in two places at once
+    if (poppedOutNoteIds.has(noteId)) {
+      await desktop?.popout.open.mutate({ noteId });
+      return;
+    }
     const oldTabForNote = options.force ? null : getTabsForNote(noteId).at(0);
     const activeTab = getActiveTab();
     const isReactivatingTab =
@@ -1123,7 +1130,7 @@ class EditorStore extends BaseStore<EditorStore> {
     if (sessionSaveState === SaveState.NotSaved) {
       const editor = useEditorManager.getState().getEditor(sessionId);
       const content = editor?.editor?.getContent();
-      this.saveSession(
+      return this.saveSession(
         sessionId,
         content
           ? {
@@ -1136,6 +1143,8 @@ class EditorStore extends BaseStore<EditorStore> {
       );
     }
   };
+
+  waitForPendingSaves = () => saveMutex.waitForUnlock();
 
   newSession = () => {
     const { activeTabId, activateSession, getActiveTab } = this.get();
@@ -1384,7 +1393,10 @@ const useEditorStore = createPersistedStore(EditorStore, {
       return sessions;
     }, [] as EditorSession[])
   }),
-  storage: db.config() as PersistStorage<Partial<EditorStore>>
+  // popout windows must not overwrite the main window's tabs & sessions
+  storage: (IS_POPOUT_WINDOW
+    ? { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+    : db.config()) as PersistStorage<Partial<EditorStore>>
 }) as ReturnType<typeof createPersistedStore<EditorStore>>;
 export { useEditorStore, SESSION_STATES };
 
