@@ -35,6 +35,7 @@ import { config } from "./utils/config";
 import path from "path";
 import { bringToFront } from "./utils/bring-to-front";
 import { bridge } from "./api/bridge";
+import { closeAllPopouts, configurePopouts } from "./api/popout";
 import { setupDesktopIntegration } from "./utils/desktop-integration";
 import { disableCustomDns, enableCustomDns } from "./utils/custom-dns";
 import { Messages, setI18nGlobal } from "@notesnook/intl";
@@ -147,7 +148,11 @@ async function createWindow() {
     }
   });
 
-  createIPCHandler({ router, windows: [mainWindow] });
+  const ipcHandler = createIPCHandler({ router, windows: [mainWindow] });
+  configurePopouts((window) => {
+    ipcHandler.attachWindow(window);
+    secureWindow(window);
+  });
   globalThis.window = mainWindow;
   mainWindow.setMenuBarVisibility(false);
   mainWindowState.manage(mainWindow);
@@ -191,6 +196,7 @@ async function createWindow() {
   );
   mainWindow.once("closed", () => {
     globalThis.window = null;
+    closeAllPopouts();
   });
 
   setupMenu();
@@ -199,23 +205,7 @@ async function createWindow() {
   if (isDevelopment())
     mainWindow.webContents.openDevTools({ mode: "bottom", activate: true });
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
-    return { action: "deny" };
-  });
-
-  mainWindow.webContents.on("will-navigate", (event, url) => {
-    try {
-      const parsedUrl = new URL(url);
-      if (!appHostnames.includes(parsedUrl.hostname)) {
-        event.preventDefault();
-        shell.openExternal(url);
-      }
-    } catch (e) {
-      console.error("will-navigate: failed to parse URL", url, e);
-      event.preventDefault();
-    }
-  });
+  secureWindow(mainWindow);
 
   nativeTheme.on("updated", () => {
     setupTray();
@@ -292,6 +282,26 @@ app.on("activate", () => {
     createWindow();
   }
 });
+
+function secureWindow(window: BrowserWindow) {
+  window.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: "deny" };
+  });
+
+  window.webContents.on("will-navigate", (event, url) => {
+    try {
+      const parsedUrl = new URL(url);
+      if (!appHostnames.includes(parsedUrl.hostname)) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    } catch (e) {
+      console.error("will-navigate: failed to parse URL", url, e);
+      event.preventDefault();
+    }
+  });
+}
 
 function findNNLink(argv: string[]): string | undefined {
   return argv.find((arg) => arg.startsWith("nn://"));

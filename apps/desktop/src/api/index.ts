@@ -27,6 +27,7 @@ import { safeStorageRouter } from "./safe-storage";
 import { windowRouter } from "./window";
 import { sqliteRouter } from "./sqlite-kysely";
 import { backupsRouter } from "./backups";
+import { popoutRouter } from "./popout";
 
 const t = initTRPC.create();
 
@@ -39,7 +40,8 @@ export const router = t.router({
   safeStorage: safeStorageRouter,
   window: windowRouter,
   sqlite: sqliteRouter,
-  backups: backupsRouter
+  backups: backupsRouter,
+  popout: popoutRouter
 });
 
 const createCaller = t.createCallerFactory(router);
