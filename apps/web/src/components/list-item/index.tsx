@@ -45,6 +45,7 @@ type ListItemProps<TItem extends Item, TContext> = {
 
   onKeyPress?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   onMiddleClick?: () => void;
   onSelect?: () => void;
 
@@ -186,6 +187,10 @@ function ListItem<TItem extends Item, TContext>(
         if (!e.metaKey && !e.shiftKey && !e.ctrlKey && props.onClick) {
           props.onClick();
         }
+      }}
+      onDoubleClick={(e) => {
+        if (!e.metaKey && !e.shiftKey && !e.ctrlKey && props.onDoubleClick)
+          props.onDoubleClick();
       }}
       onMouseDown={(e) => {
         if (e.button == 1 && props.onMiddleClick) {

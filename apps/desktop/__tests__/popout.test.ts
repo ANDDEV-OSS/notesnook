@@ -18,23 +18,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { test, expect } from "@nn/test";
+import type { Page } from "@playwright/test";
 
 const NOTE_TITLE = "Popout note";
 
-test("open a note in a new window", async ({ electronApp, page }) => {
-  await page.waitForSelector(".ProseMirror");
-
+async function createNote(page: Page, title: string, content: string) {
   await page.locator(`[data-test-id="create-new-note"]`).click();
-  await page.locator(`.active [data-test-id="editor-title"]`).fill(NOTE_TITLE);
+  await page.locator(`.active [data-test-id="editor-title"]`).fill(title);
   const listItem = page.locator(`[data-test-id="list-item"]`, {
-    hasText: NOTE_TITLE
+    hasText: title
   });
   // wait for the note to get created so no keystrokes are lost while the
   // editor switches over to it
   await listItem.waitFor();
   await page.locator(".active .ProseMirror").click();
-  await page.keyboard.type("Typed in the main window.");
-  await expect(listItem).toContainText("Typed in the main window.");
+  await page.keyboard.type(content);
+  await expect(listItem).toContainText(content);
+  return listItem;
+}
+
+test("open a note in a new window", async ({ electronApp, page }) => {
+  await page.waitForSelector(".ProseMirror");
+
+  const listItem = await createNote(
+    page,
+    NOTE_TITLE,
+    "Typed in the main window."
+  );
 
   const popoutPromise = electronApp.waitForEvent("window");
   await listItem.click({ button: "right" });
@@ -79,4 +89,38 @@ test("open a note in a new window", async ({ electronApp, page }) => {
   await expect(page.locator(".active .ProseMirror")).toContainText(
     "Typed in the main window. Edited in the popout."
   );
+});
+
+test("double click opens a note in a new window", async ({
+  electronApp,
+  page
+}) => {
+  await page.waitForSelector(".ProseMirror");
+  const first = await createNote(page, "First note", "First content.");
+  const second = await createNote(page, "Second note", "Second content.");
+  await first.click();
+  const mainTitle = page.locator(`.active [data-test-id="editor-title"]`);
+  await expect(mainTitle).toHaveValue("First note");
+
+  const popoutPromise = electronApp.waitForEvent("window");
+  await second.dblclick();
+  const popout = await popoutPromise;
+  await expect(popout.locator(`[data-test-id="editor-title"]`)).toHaveValue(
+    "Second note"
+  );
+  // the main window goes back to the note it was showing before
+  await expect(mainTitle).toHaveValue("First note");
+
+  // clicking a popped out note focuses its window without selecting it in
+  // the list, so only the note open in the main window stays highlighted
+  await second.click();
+  await expect(mainTitle).toHaveValue("First note");
+  await expect(page.locator(`[data-test-id="list-item"].selected`)).toHaveCount(
+    0
+  );
+  expect(
+    await electronApp.evaluate(
+      ({ BrowserWindow }) => BrowserWindow.getAllWindows().length
+    )
+  ).toBe(2);
 });

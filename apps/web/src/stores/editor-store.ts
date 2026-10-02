@@ -56,6 +56,7 @@ import { useEditorManager } from "../components/editor/manager";
 import { Context } from "../components/list-container/types";
 import { desktop } from "../common/desktop-bridge";
 import { IS_POPOUT_WINDOW, poppedOutNoteIds } from "../utils/popout";
+import { store as selectionStore } from "./selection-store";
 
 export enum SaveState {
   NotSaved = -1,
@@ -708,6 +709,8 @@ class EditorStore extends BaseStore<EditorStore> {
     const noteId = typeof noteOrId === "string" ? noteOrId : noteOrId.id;
     // a note open in a popout window must not be edited in two places at once
     if (poppedOutNoteIds.has(noteId)) {
+      // keep the list highlighting the note open in this window
+      selectionStore.toggleSelectionMode(false);
       await desktop?.popout.open.mutate({ noteId });
       return;
     }
@@ -942,6 +945,9 @@ class EditorStore extends BaseStore<EditorStore> {
       this.activateSession(session.id);
       return true;
     } else {
+      // skip notes that are currently open in a popout window
+      if (poppedOutNoteIds.has(session.note.id)) return false;
+
       if (!(await db.notes.exists(session.note.id))) {
         tabSessionHistory.remove(tabId, session.id);
         this.set((state) => {
@@ -964,6 +970,10 @@ class EditorStore extends BaseStore<EditorStore> {
     session: EditorSession,
     options?: { force?: boolean; silent?: boolean }
   ) => {
+    // a note can get popped out while it's still being opened (e.g. on
+    // double click)
+    if ("note" in session && poppedOutNoteIds.has(session.note.id)) return;
+
     this.set((state) => {
       const index = state.sessions.findIndex((s) => s.id === session.id);
       if (index > -1) {

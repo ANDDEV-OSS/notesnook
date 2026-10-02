@@ -164,6 +164,11 @@ function Note(props: NoteProps) {
       context={{ color, locked }}
       menuItems={noteMenuItems}
       onClick={() => useEditorStore.getState().openSession(note)}
+      onDoubleClick={
+        IS_DESKTOP_APP && !locked
+          ? () => openNoteInNewWindow(note.id)
+          : undefined
+      }
       onMiddleClick={() =>
         useEditorStore.getState().openSession(note, { openInNewTab: true })
       }

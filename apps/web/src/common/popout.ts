@@ -41,15 +41,31 @@ const SAVE_DEBOUNCE_MARGIN = 250;
 export async function openNoteInNewWindow(noteId: string) {
   if (!desktop) return;
 
-  const { getSessionsForNote, saveSessionContentIfNotSaved, closeNotes } =
+  // stop the note from (re)opening in this window while it's moving out
+  poppedOutNoteIds.add(noteId);
+  await detachNote(noteId);
+  await desktop.popout.open.mutate({ noteId }).catch((e) => {
+    poppedOutNoteIds.delete(noteId);
+    throw e;
+  });
+  // a click that started opening the note (e.g. the first click of a double
+  // click) may have finished in the meantime
+  await detachNote(noteId);
+}
+
+async function detachNote(noteId: string) {
+  const { getSessionsForNote, saveSessionContentIfNotSaved } =
     useEditorStore.getState();
   await Promise.all(
     getSessionsForNote(noteId).map((s) => saveSessionContentIfNotSaved(s.id))
   );
-  closeNotes(noteId);
   await useEditorStore.getState().waitForPendingSaves();
 
-  await desktop.popout.open.mutate({ noteId });
+  // show the previously opened note in the active tab instead of closing it
+  const { isNoteOpen, canGoBack, goBack } = useEditorStore.getState();
+  if (isNoteOpen(noteId) && canGoBack) await goBack();
+  useEditorStore.getState().closeNotes(noteId);
+  await useEditorStore.getState().waitForPendingSaves();
 }
 
 /**
