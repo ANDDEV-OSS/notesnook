@@ -35,13 +35,15 @@ class SqliteDriver implements Driver {
   connection?: DatabaseConnection;
   private connectionMutex = new Mutex();
   private handle?: string;
+  // identifies this window's queries on the connection shared by all windows
+  private readonly owner = crypto.randomUUID();
   constructor(private readonly config: { name: string }) {}
 
   async init(): Promise<void> {
     this.handle = await desktop!.sqlite.open.mutate({
       filePath: this.config.name
     });
-    this.connection = new SqliteWorkerConnection(this.handle);
+    this.connection = new SqliteWorkerConnection(this.handle, this.owner);
   }
 
   async acquireConnection(): Promise<DatabaseConnection> {
@@ -82,7 +84,10 @@ class SqliteDriver implements Driver {
 }
 
 class SqliteWorkerConnection implements DatabaseConnection {
-  constructor(private readonly handle: string) {}
+  constructor(
+    private readonly handle: string,
+    private readonly owner: string
+  ) {}
 
   streamQuery<R>(): AsyncIterableIterator<QueryResult<R>> {
     throw new Error("wasqlite driver doesn't support streaming");
@@ -95,7 +100,8 @@ class SqliteWorkerConnection implements DatabaseConnection {
     return (await desktop!.sqlite.run.mutate({
       id: this.handle,
       sql,
-      parameters: parameters as any
+      parameters: parameters as any,
+      owner: this.owner
     })) as unknown as QueryResult<R>;
   }
 }

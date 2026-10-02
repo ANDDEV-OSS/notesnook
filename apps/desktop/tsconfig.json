@@ -7,5 +7,5 @@
   },
   "files": ["global.d.ts"],
   "include": ["src"],
-  "exclude": ["__tests__"]
+  "exclude": ["__tests__", "src/**/*.test.ts"]
 }

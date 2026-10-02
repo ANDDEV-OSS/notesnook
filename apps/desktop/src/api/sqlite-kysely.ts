@@ -22,6 +22,7 @@ import type { QueryResult } from "@streetwriters/kysely";
 import { app } from "electron";
 import path from "node:path";
 import { initTRPC } from "@trpc/server";
+import { TransactionLock } from "../utils/transaction-lock";
 
 type SQLiteCompatibleType =
   | number
@@ -38,6 +39,10 @@ class SQLite {
   retryCounter: Record<string, number> = {};
   extensionsLoaded = false;
   private filePath?: string;
+  // the connection is shared by all windows (e.g. note popouts)
+  private transactionLock = new TransactionLock({
+    isInTransaction: () => !!this.sqlite?.inTransaction
+  });
 
   constructor() {
     console.log("new sqlite worker");
@@ -151,10 +156,13 @@ class SQLite {
 
   async run<R>(
     sql: string,
-    parameters?: SQLiteCompatibleType[]
+    parameters?: SQLiteCompatibleType[],
+    owner?: string
   ): Promise<QueryResult<R>> {
     if (!this.sqlite) throw new Error("No database is not opened.");
-    return await this.exec(sql, parameters);
+    return await this.transactionLock.run(owner, sql, () =>
+      this.exec<R>(sql, parameters)
+    );
   }
 
   async close() {
@@ -259,14 +267,15 @@ export const sqliteRouter = t.router({
   run: t.procedure
     .input((v) => v)
     .mutation(async ({ input }) => {
-      const { id, sql, parameters } = input as {
+      const { id, sql, parameters, owner } = input as {
         id: string;
         sql: string;
         parameters?: SQLiteCompatibleType[];
+        owner?: string;
       };
       const sqlite = databases[id];
       if (!sqlite) throw new Error("Database not found for id: " + id);
-      return await sqlite.run(sql, parameters);
+      return await sqlite.run(sql, parameters, owner);
     }),
   close: t.procedure
     .input((v) => v)
