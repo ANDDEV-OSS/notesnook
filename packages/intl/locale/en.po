@@ -876,6 +876,10 @@ msgstr "All tools in this group will be removed from the toolbar."
 msgid "All your backups are stored in 'Phone Storage/Notesnook/backups/' folder"
 msgstr "All your backups are stored in 'Phone Storage/Notesnook/backups/' folder"
 
+#: src/strings.ts:2817
+msgid "Allow until closed"
+msgstr "Allow until closed"
+
 #: src/strings.ts:108
 msgid "Already have an account?"
 msgstr "Already have an account?"
@@ -5270,6 +5274,10 @@ msgstr "Privacy for everyone"
 #: src/strings.ts:1182
 msgid "Privacy mode"
 msgstr "Privacy mode"
+
+#: src/strings.ts:2816
+msgid "Privacy mode is hiding this window from screenshots & screen sharing."
+msgstr "Privacy mode is hiding this window from screenshots & screen sharing."
 
 #: src/strings.ts:2590
 msgid "privacy policy"

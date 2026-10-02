@@ -39,6 +39,11 @@ import { AssetManager } from "../utils/asset-manager";
 import { isFlatpak, isPortable, isSnap } from "../utils";
 import { setupDesktopIntegration } from "../utils/desktop-integration";
 import { disableCustomDns, enableCustomDns } from "../utils/custom-dns";
+import {
+  isScreenCaptureBlockingSupported,
+  setScreenCaptureBlocked
+} from "../utils/screen-capture";
+import { setPopoutsPrivacyMode } from "./popout";
 import type { MenuItem as NNMenuItem } from "@notesnook/ui";
 import { platform } from "os";
 import { strings } from "@notesnook/intl";
@@ -95,19 +100,11 @@ export const osIntegrationRouter = t.router({
   setPrivacyMode: t.procedure
     .input(z.object({ enabled: z.boolean() }))
     .mutation(({ input: { enabled } }) => {
-      if (!globalThis.window || !["win32", "darwin"].includes(process.platform))
-        return;
+      if (!globalThis.window || !isScreenCaptureBlockingSupported) return;
 
-      globalThis.window.setContentProtection(enabled);
-
-      if (process.platform === "win32") {
-        globalThis.window.setThumbnailClip(
-          enabled
-            ? { x: 0, y: 0, width: 1, height: 1 }
-            : { x: 0, y: 0, width: 0, height: 0 }
-        );
-      }
+      setScreenCaptureBlocked(globalThis.window, enabled);
       config.privacyMode = enabled;
+      setPopoutsPrivacyMode(enabled);
     }),
 
   desktopIntegration: t.procedure.query(() => config.desktopSettings),

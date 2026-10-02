@@ -2811,5 +2811,8 @@ Continue without attachments?`,
   offlineModeDesc: () =>
     t`Using Notesnook without an account will NOT sync your notes across devices and could result in data loss if you lose access to your device or uninstall the app. Make sure to backup your notes regularly.`,
   alignment: () => t`Alignment`,
-  openInNewWindow: () => t`Open in new window`
+  openInNewWindow: () => t`Open in new window`,
+  screenCaptureBlocked: () =>
+    t`Privacy mode is hiding this window from screenshots & screen sharing.`,
+  allowScreenCaptureUntilClosed: () => t`Allow until closed`
 };

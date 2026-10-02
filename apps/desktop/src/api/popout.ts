@@ -27,11 +27,16 @@ import { isDevelopment } from "../utils";
 import { AssetManager } from "../utils/asset-manager";
 import { config } from "../utils/config";
 import { PROTOCOL_URL } from "../utils/protocol";
+import {
+  isScreenCaptureBlockingSupported,
+  setScreenCaptureBlocked
+} from "../utils/screen-capture";
 import { getBackgroundColor, getTheme } from "../utils/theme";
 
 type PopoutEvents = {
   popoutsChanged(noteIds: string[]): void;
   noteChanged(noteId: string): void;
+  screenCaptureChanged(): void;
 };
 
 // note ids are 24 character hex object ids (see getId in @notesnook/core)
@@ -40,6 +45,8 @@ const NoteId = z.string().regex(/^[a-f0-9]{24}$/);
 const FLUSH_TIMEOUT = 3000;
 
 const popouts = new Map<string, BrowserWindow>();
+// popouts where the user chose to allow screen capture despite privacy mode
+const screenCaptureAllowed = new Set<string>();
 const emitter = new EventEmitter() as TypedEventEmitter<PopoutEvents>;
 let setupWindow: ((window: BrowserWindow) => void) | undefined;
 
@@ -53,6 +60,25 @@ export function configurePopouts(setup: (window: BrowserWindow) => void) {
 
 export function closeAllPopouts() {
   for (const window of popouts.values()) window.close();
+}
+
+/**
+ * Applies the privacy mode setting to all popouts. Enabling it again also
+ * revokes any screen capture allowed for individual popouts.
+ */
+export function setPopoutsPrivacyMode(enabled: boolean) {
+  screenCaptureAllowed.clear();
+  for (const window of popouts.values())
+    setScreenCaptureBlocked(window, enabled);
+  emitter.emit("screenCaptureChanged");
+}
+
+function isScreenCaptureBlocked(noteId: string) {
+  return (
+    isScreenCaptureBlockingSupported &&
+    config.privacyMode &&
+    !screenCaptureAllowed.has(noteId)
+  );
 }
 
 function openPopout(noteId: string) {
@@ -81,6 +107,7 @@ function openPopout(noteId: string) {
     }
   });
   window.setMenuBarVisibility(false);
+  setScreenCaptureBlocked(window, isScreenCaptureBlocked(noteId));
   setupWindow?.(window);
 
   // give the popout a chance to save any pending edits before it closes
@@ -100,6 +127,7 @@ function openPopout(noteId: string) {
   });
   window.once("closed", () => {
     popouts.delete(noteId);
+    screenCaptureAllowed.delete(noteId);
     emitter.emit("popoutsChanged", Array.from(popouts.keys()));
   });
 
@@ -133,6 +161,28 @@ export const popoutRouter = t.router({
       };
     });
   }),
+  // allows screen capture of a popout until it's closed, even in privacy mode
+  allowScreenCapture: t.procedure
+    .input(z.object({ noteId: NoteId }))
+    .mutation(({ input: { noteId } }) => {
+      const window = popouts.get(noteId);
+      if (!window) return;
+      screenCaptureAllowed.add(noteId);
+      setScreenCaptureBlocked(window, false);
+      emitter.emit("screenCaptureChanged");
+    }),
+  onScreenCaptureBlockedChanged: t.procedure
+    .input(z.object({ noteId: NoteId }))
+    .subscription(({ input: { noteId } }) => {
+      return observable<boolean>((emit) => {
+        const listener = () => emit.next(isScreenCaptureBlocked(noteId));
+        emitter.addListener("screenCaptureChanged", listener);
+        listener();
+        return () => {
+          emitter.removeListener("screenCaptureChanged", listener);
+        };
+      });
+    }),
   onPopoutsChanged: t.procedure.subscription(() => {
     return observable<string[]>((emit) => {
       const listener = (noteIds: string[]) => emit.next(noteIds);
