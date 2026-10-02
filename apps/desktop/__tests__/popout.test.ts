@@ -134,3 +134,20 @@ test("double click opens a note in a new window", async ({
     )
   ).toBe(2);
 });
+
+test("edits made right before popping out a note are kept", async ({
+  electronApp,
+  page
+}) => {
+  await page.waitForSelector(".ProseMirror");
+  const listItem = await createNote(page, NOTE_TITLE, "Saved.");
+  // still waiting for the editor's save debounce when the note is popped out
+  await page.keyboard.type(" Typed just before.");
+
+  const popoutPromise = electronApp.waitForEvent("window");
+  await listItem.dblclick();
+  const popout = await popoutPromise;
+  await expect(popout.locator(".ProseMirror")).toContainText(
+    "Saved. Typed just before."
+  );
+});

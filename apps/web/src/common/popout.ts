@@ -65,13 +65,26 @@ export function clearListHighlight() {
     document.activeElement.blur();
 }
 
-async function detachNote(noteId: string) {
-  const { getSessionsForNote, saveSessionContentIfNotSaved } =
+/**
+ * Waits until all edits made in the given sessions have been saved, including
+ * ones still waiting for the editor's save debounce.
+ */
+async function flushSessions(sessionIds: string[]) {
+  if (sessionIds.length === 0) return;
+  const { saveSessionContentIfNotSaved, waitForPendingSaves } =
     useEditorStore.getState();
-  await Promise.all(
-    getSessionsForNote(noteId).map((s) => saveSessionContentIfNotSaved(s.id))
+  await Promise.all(sessionIds.map((id) => saveSessionContentIfNotSaved(id)));
+  await new Promise((resolve) => setTimeout(resolve, SAVE_DEBOUNCE_MARGIN));
+  await waitForPendingSaves();
+}
+
+async function detachNote(noteId: string) {
+  await flushSessions(
+    useEditorStore
+      .getState()
+      .getSessionsForNote(noteId)
+      .map((s) => s.id)
   );
-  await useEditorStore.getState().waitForPendingSaves();
 
   // show the previously opened note in the active tab instead of closing it
   const { isNoteOpen, canGoBack, goBack } = useEditorStore.getState();
@@ -135,11 +148,6 @@ export function setupPopoutWindow(noteId: string) {
   );
 
   // called by the main process before the window is closed
-  window.flushPopout = async () => {
-    const { sessions, saveSessionContentIfNotSaved, waitForPendingSaves } =
-      useEditorStore.getState();
-    await Promise.all(sessions.map((s) => saveSessionContentIfNotSaved(s.id)));
-    await new Promise((resolve) => setTimeout(resolve, SAVE_DEBOUNCE_MARGIN));
-    await waitForPendingSaves();
-  };
+  window.flushPopout = () =>
+    flushSessions(useEditorStore.getState().sessions.map((s) => s.id));
 }
