@@ -709,8 +709,10 @@ class EditorStore extends BaseStore<EditorStore> {
     const noteId = typeof noteOrId === "string" ? noteOrId : noteOrId.id;
     // a note open in a popout window must not be edited in two places at once
     if (poppedOutNoteIds.has(noteId)) {
-      // keep the list highlighting the note open in this window
+      // keep the list highlighting only the note open in this window
       selectionStore.toggleSelectionMode(false);
+      if (document.activeElement instanceof HTMLElement)
+        document.activeElement.blur();
       await desktop?.popout.open.mutate({ noteId });
       return;
     }

@@ -23,6 +23,7 @@ import { db } from "./db";
 import { desktop } from "./desktop-bridge";
 import { useEditorStore } from "../stores/editor-store";
 import { useStore as useNoteStore } from "../stores/note-store";
+import { store as selectionStore } from "../stores/selection-store";
 import { useKeyStore } from "../interfaces/key-store";
 import { poppedOutNoteIds } from "../utils/popout";
 
@@ -43,6 +44,7 @@ export async function openNoteInNewWindow(noteId: string) {
 
   // stop the note from (re)opening in this window while it's moving out
   poppedOutNoteIds.add(noteId);
+  clearListHighlight();
   await detachNote(noteId);
   await desktop.popout.open.mutate({ noteId }).catch((e) => {
     poppedOutNoteIds.delete(noteId);
@@ -51,6 +53,16 @@ export async function openNoteInNewWindow(noteId: string) {
   // a click that started opening the note (e.g. the first click of a double
   // click) may have finished in the meantime
   await detachNote(noteId);
+}
+
+/**
+ * Keeps the note list highlighting only the note open in the main window by
+ * removing the selection & focus left behind by clicking a popped out note.
+ */
+export function clearListHighlight() {
+  selectionStore.toggleSelectionMode(false);
+  if (document.activeElement instanceof HTMLElement)
+    document.activeElement.blur();
 }
 
 async function detachNote(noteId: string) {

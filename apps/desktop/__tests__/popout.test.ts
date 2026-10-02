@@ -98,6 +98,14 @@ test("double click opens a note in a new window", async ({
   await page.waitForSelector(".ProseMirror");
   const first = await createNote(page, "First note", "First content.");
   const second = await createNote(page, "Second note", "Second content.");
+  // an idle note to compare list highlighting against
+  const third = await createNote(page, "Third note", "Third content.");
+  const background = (item: typeof first) =>
+    item.evaluate((element) => getComputedStyle(element).backgroundColor);
+  const expectNotHighlighted = async (item: typeof first) => {
+    await page.mouse.move(0, 0);
+    await expect.poll(() => background(item)).toBe(await background(third));
+  };
   await first.click();
   const mainTitle = page.locator(`.active [data-test-id="editor-title"]`);
   await expect(mainTitle).toHaveValue("First note");
@@ -108,16 +116,18 @@ test("double click opens a note in a new window", async ({
   await expect(popout.locator(`[data-test-id="editor-title"]`)).toHaveValue(
     "Second note"
   );
-  // the main window goes back to the note it was showing before
+  // the main window goes back to the note it was showing before & only that
+  // note stays highlighted in the list
   await expect(mainTitle).toHaveValue("First note");
+  await expectNotHighlighted(second);
 
-  // clicking a popped out note focuses its window without selecting it in
-  // the list, so only the note open in the main window stays highlighted
+  // clicking a popped out note focuses its window without selecting it
   await second.click();
   await expect(mainTitle).toHaveValue("First note");
   await expect(page.locator(`[data-test-id="list-item"].selected`)).toHaveCount(
     0
   );
+  await expectNotHighlighted(second);
   expect(
     await electronApp.evaluate(
       ({ BrowserWindow }) => BrowserWindow.getAllWindows().length
