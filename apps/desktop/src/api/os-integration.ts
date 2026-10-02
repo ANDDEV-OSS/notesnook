@@ -43,7 +43,7 @@ import {
   isScreenCaptureBlockingSupported,
   setScreenCaptureBlocked
 } from "../utils/screen-capture";
-import { setPopoutsPrivacyMode } from "./popout";
+import { setPopoutsPrivacyMode, setPopoutsWindowControlsColor } from "./popout";
 import type { MenuItem as NNMenuItem } from "@notesnook/ui";
 import { platform } from "os";
 import { strings } from "@notesnook/intl";
@@ -214,6 +214,7 @@ export const osIntegrationRouter = t.router({
             globalThis.window?.setTitleBarOverlay({
               symbolColor: windowControlsIconColor
             });
+          setPopoutsWindowControlsColor(windowControlsIconColor);
         }
 
         if (backgroundColor) {

@@ -62,6 +62,24 @@ test("open a note in a new window", async ({ electronApp, page }) => {
     0
   );
   await expect(popout.locator(`[data-test-id="tabs"]`)).toHaveCount(0);
+  // the popout can be kept on top of other windows
+  const alwaysOnTop = popout.locator(`[data-test-id="popout-always-on-top"]`);
+  const isPopoutAlwaysOnTop = () =>
+    electronApp.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()
+        .find((w) => w.webContents.getURL().includes("/popout"))
+        ?.isAlwaysOnTop()
+    );
+  await alwaysOnTop.click();
+  await expect(alwaysOnTop).toHaveAttribute("aria-pressed", "true");
+  expect(await isPopoutAlwaysOnTop()).toBe(true);
+  await alwaysOnTop.click();
+  await expect(alwaysOnTop).toHaveAttribute("aria-pressed", "false");
+  expect(await isPopoutAlwaysOnTop()).toBe(false);
+  // privacy mode is off so there's nothing to hide from screen sharing
+  await expect(
+    popout.locator(`[data-test-id="popout-screen-capture"]`)
+  ).toHaveCount(0);
   // and the note is no longer open in the main window
   await expect(page.locator(`[data-test-id="editor-title"]`)).not.toHaveValue(
     NOTE_TITLE

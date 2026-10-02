@@ -36,7 +36,16 @@ import { getBackgroundColor, getTheme } from "../utils/theme";
 type PopoutEvents = {
   popoutsChanged(noteIds: string[]): void;
   noteChanged(noteId: string): void;
-  screenCaptureChanged(): void;
+  stateChanged(): void;
+};
+
+export type PopoutState = {
+  alwaysOnTop: boolean;
+  // whether privacy mode applies to the popout (i.e. it can be hidden)
+  privacyMode: boolean;
+  screenCaptureBlocked: boolean;
+  // whether the popout draws its own title bar next to the window controls
+  hasTitleBarOverlay: boolean;
 };
 
 // note ids are 24 character hex object ids (see getId in @notesnook/core)
@@ -47,6 +56,7 @@ const FLUSH_TIMEOUT = 3000;
 const popouts = new Map<string, BrowserWindow>();
 // popouts where the user chose to allow screen capture despite privacy mode
 const screenCaptureAllowed = new Set<string>();
+const titleBarOverlayPopouts = new Set<string>();
 const emitter = new EventEmitter() as TypedEventEmitter<PopoutEvents>;
 let setupWindow: ((window: BrowserWindow) => void) | undefined;
 
@@ -70,15 +80,23 @@ export function setPopoutsPrivacyMode(enabled: boolean) {
   screenCaptureAllowed.clear();
   for (const window of popouts.values())
     setScreenCaptureBlocked(window, enabled);
-  emitter.emit("screenCaptureChanged");
+  emitter.emit("stateChanged");
 }
 
-function isScreenCaptureBlocked(noteId: string) {
-  return (
-    isScreenCaptureBlockingSupported &&
-    config.privacyMode &&
-    !screenCaptureAllowed.has(noteId)
-  );
+export function setPopoutsWindowControlsColor(symbolColor: string) {
+  if (process.platform !== "win32") return;
+  for (const noteId of titleBarOverlayPopouts)
+    popouts.get(noteId)?.setTitleBarOverlay({ symbolColor });
+}
+
+function getPopoutState(noteId: string): PopoutState {
+  const privacyMode = isScreenCaptureBlockingSupported && config.privacyMode;
+  return {
+    alwaysOnTop: !!popouts.get(noteId)?.isAlwaysOnTop(),
+    privacyMode,
+    screenCaptureBlocked: privacyMode && !screenCaptureAllowed.has(noteId),
+    hasTitleBarOverlay: titleBarOverlayPopouts.has(noteId)
+  };
 }
 
 function openPopout(noteId: string) {
@@ -89,6 +107,11 @@ function openPopout(noteId: string) {
     return;
   }
 
+  // like the main window, draw the title bar ourselves (next to the native
+  // window controls) unless the user prefers the native title bar
+  const hasTitleBarOverlay =
+    (process.platform === "win32" || process.platform === "darwin") &&
+    !config.desktopSettings.nativeTitlebar;
   const window = new BrowserWindow({
     width: 700,
     height: 900,
@@ -100,6 +123,17 @@ function openPopout(noteId: string) {
       size: 512,
       format: process.platform === "win32" ? "ico" : "png"
     }),
+    ...(hasTitleBarOverlay
+      ? {
+          titleBarStyle: "hidden",
+          titleBarOverlay: {
+            height: 37,
+            color: "#00000000",
+            symbolColor: config.windowControlsIconColor
+          },
+          trafficLightPosition: { x: 16, y: 12 }
+        }
+      : {}),
     webPreferences: {
       zoomFactor: config.zoomFactor,
       spellcheck: config.isSpellCheckerEnabled,
@@ -107,7 +141,7 @@ function openPopout(noteId: string) {
     }
   });
   window.setMenuBarVisibility(false);
-  setScreenCaptureBlocked(window, isScreenCaptureBlocked(noteId));
+  setScreenCaptureBlocked(window, getPopoutState(noteId).screenCaptureBlocked);
   setupWindow?.(window);
 
   // give the popout a chance to save any pending edits before it closes
@@ -128,10 +162,12 @@ function openPopout(noteId: string) {
   window.once("closed", () => {
     popouts.delete(noteId);
     screenCaptureAllowed.delete(noteId);
+    titleBarOverlayPopouts.delete(noteId);
     emitter.emit("popoutsChanged", Array.from(popouts.keys()));
   });
 
   popouts.set(noteId, window);
+  if (hasTitleBarOverlay) titleBarOverlayPopouts.add(noteId);
   emitter.emit("popoutsChanged", Array.from(popouts.keys()));
 
   const url = new URL(isDevelopment() ? "http://localhost:3000" : PROTOCOL_URL);
@@ -161,25 +197,33 @@ export const popoutRouter = t.router({
       };
     });
   }),
-  // allows screen capture of a popout until it's closed, even in privacy mode
-  allowScreenCapture: t.procedure
-    .input(z.object({ noteId: NoteId }))
-    .mutation(({ input: { noteId } }) => {
-      const window = popouts.get(noteId);
-      if (!window) return;
-      screenCaptureAllowed.add(noteId);
-      setScreenCaptureBlocked(window, false);
-      emitter.emit("screenCaptureChanged");
+  setAlwaysOnTop: t.procedure
+    .input(z.object({ noteId: NoteId, enabled: z.boolean() }))
+    .mutation(({ input: { noteId, enabled } }) => {
+      popouts.get(noteId)?.setAlwaysOnTop(enabled, "floating");
+      emitter.emit("stateChanged");
     }),
-  onScreenCaptureBlockedChanged: t.procedure
+  // lets a popout be captured (e.g. for screen sharing) in privacy mode until
+  // it's closed or privacy mode is enabled again
+  setScreenCaptureBlocked: t.procedure
+    .input(z.object({ noteId: NoteId, blocked: z.boolean() }))
+    .mutation(({ input: { noteId, blocked } }) => {
+      const window = popouts.get(noteId);
+      if (!window || !getPopoutState(noteId).privacyMode) return;
+      if (blocked) screenCaptureAllowed.delete(noteId);
+      else screenCaptureAllowed.add(noteId);
+      setScreenCaptureBlocked(window, blocked);
+      emitter.emit("stateChanged");
+    }),
+  onStateChanged: t.procedure
     .input(z.object({ noteId: NoteId }))
     .subscription(({ input: { noteId } }) => {
-      return observable<boolean>((emit) => {
-        const listener = () => emit.next(isScreenCaptureBlocked(noteId));
-        emitter.addListener("screenCaptureChanged", listener);
+      return observable<PopoutState>((emit) => {
+        const listener = () => emit.next(getPopoutState(noteId));
+        emitter.addListener("stateChanged", listener);
         listener();
         return () => {
-          emitter.removeListener("screenCaptureChanged", listener);
+          emitter.removeListener("stateChanged", listener);
         };
       });
     }),

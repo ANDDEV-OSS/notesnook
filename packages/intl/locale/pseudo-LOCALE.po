@@ -876,12 +876,12 @@ msgstr ""
 msgid "All your backups are stored in 'Phone Storage/Notesnook/backups/' folder"
 msgstr ""
 
-#: src/strings.ts:2817
-msgid "Allow until closed"
-msgstr ""
-
 #: src/strings.ts:108
 msgid "Already have an account?"
+msgstr ""
+
+#: src/strings.ts:2815
+msgid "Always on top"
 msgstr ""
 
 #: src/strings.ts:2233
@@ -3464,6 +3464,10 @@ msgstr ""
 msgid "Help improve Notesnook by sending completely anonymized"
 msgstr ""
 
+#: src/strings.ts:2817
+msgid "Hidden from screen sharing by privacy mode. Click to show until this window is closed."
+msgstr ""
+
 #: src/strings.ts:1377
 msgid "Hide"
 msgstr ""
@@ -5247,10 +5251,6 @@ msgstr ""
 
 #: src/strings.ts:1182
 msgid "Privacy mode"
-msgstr ""
-
-#: src/strings.ts:2816
-msgid "Privacy mode is hiding this window from screenshots & screen sharing."
 msgstr ""
 
 #: src/strings.ts:2590
@@ -7577,6 +7577,10 @@ msgstr ""
 
 #: src/strings.ts:2626
 msgid "Views"
+msgstr ""
+
+#: src/strings.ts:2818
+msgid "Visible in screen sharing. Click to hide."
 msgstr ""
 
 #: src/strings.ts:416
