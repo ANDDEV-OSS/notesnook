@@ -102,6 +102,7 @@ import {
   Update
 } from "../icons";
 import { openNoteInNewWindow } from "../../common/popout";
+import { usePoppedOutNotes } from "../../utils/popout";
 import { Context } from "../list-container/types";
 import ListItem from "../list-item";
 import { PublishDialog } from "../publish-view";
@@ -132,6 +133,9 @@ function Note(props: NoteProps) {
   const note = item;
 
   const isOpened = useEditorStore((store) => store.isNoteOpen(item.id));
+  const isPoppedOut = usePoppedOutNotes((store) =>
+    store.noteIds.includes(item.id)
+  );
   const primary: SchemeColors = color ? color.colorCode : "accent-selected";
   const dateFormat = useSettingStore((store) => store.dateFormat);
 
@@ -197,6 +201,13 @@ function Note(props: NoteProps) {
               {locked && <Lock size={11} data-test-id={`locked`} />}
               {note.favorite && <Star color={primary} size={15} />}
               {note.readonly && <Readonly size={15} />}
+              {isPoppedOut && (
+                <OpenInNewWindow
+                  data-test-id="popped-out"
+                  title={strings.openInSeparateWindow()}
+                  size={13}
+                />
+              )}
               {note.expiryDate?.value ? <Destruct size={13} /> : null}
 
               <TimeAgo live={true} datetime={date} locale="short" />
@@ -235,6 +246,14 @@ function Note(props: NoteProps) {
               {locked && <Lock size={13} data-test-id={`locked`} />}
 
               {note.readonly && <Readonly size={15} />}
+
+              {isPoppedOut && (
+                <OpenInNewWindow
+                  data-test-id="popped-out"
+                  title={strings.openInSeparateWindow()}
+                  size={13}
+                />
+              )}
 
               {note.favorite && (
                 <Star data-test-id="favorite" color={primary} size={15} />

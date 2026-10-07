@@ -2815,5 +2815,6 @@ Continue without attachments?`,
   alwaysOnTop: () => t`Always on top`,
   hiddenFromScreenSharing: () =>
     t`Hidden from screen sharing by privacy mode. Click to show until this window is closed.`,
-  visibleInScreenSharing: () => t`Visible in screen sharing. Click to hide.`
+  visibleInScreenSharing: () => t`Visible in screen sharing. Click to hide.`,
+  openInSeparateWindow: () => t`Open in a separate window`
 };

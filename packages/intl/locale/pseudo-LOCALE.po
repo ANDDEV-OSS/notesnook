@@ -4763,6 +4763,10 @@ msgstr ""
 msgid "Open file location"
 msgstr ""
 
+#: src/strings.ts:2819
+msgid "Open in a separate window"
+msgstr ""
+
 #: src/strings.ts:265
 msgid "Open in browser"
 msgstr ""

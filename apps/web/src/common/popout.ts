@@ -101,8 +101,7 @@ export function attachPopoutListeners() {
 
   desktop.popout.onPopoutsChanged.subscribe(undefined, {
     onData(noteIds) {
-      poppedOutNoteIds.clear();
-      noteIds.forEach((id) => poppedOutNoteIds.add(id));
+      poppedOutNoteIds.replace(noteIds);
     }
   });
 

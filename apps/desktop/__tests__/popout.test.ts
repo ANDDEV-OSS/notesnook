@@ -80,6 +80,9 @@ test("open a note in a new window", async ({ electronApp, page }) => {
   await expect(
     popout.locator(`[data-test-id="popout-screen-capture"]`)
   ).toHaveCount(0);
+  // the note list shows the note is open in a separate window
+  const poppedOutIndicator = listItem.locator(`[data-test-id="popped-out"]`);
+  await expect(poppedOutIndicator).toHaveCount(1);
   // and the note is no longer open in the main window
   await expect(page.locator(`[data-test-id="editor-title"]`)).not.toHaveValue(
     NOTE_TITLE
@@ -97,6 +100,7 @@ test("open a note in a new window", async ({ electronApp, page }) => {
   });
   await popoutClosed;
 
+  await expect(poppedOutIndicator).toHaveCount(0);
   // closing the popout must not close the app or lose any edits
   expect(
     await electronApp.evaluate(

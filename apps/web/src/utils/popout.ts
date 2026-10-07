@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import { create } from "zustand";
+
 /**
  * Whether this renderer is a desktop popout window showing a single note
  * (opened via "Open in new window") instead of the full app.
@@ -32,4 +34,20 @@ export function getPopoutNoteId() {
  * Ids of notes currently open in popout windows. Only maintained in the
  * main window.
  */
-export const poppedOutNoteIds = new Set<string>();
+export const usePoppedOutNotes = create<{ noteIds: string[] }>(() => ({
+  noteIds: []
+}));
+
+export const poppedOutNoteIds = {
+  has: (noteId: string) =>
+    usePoppedOutNotes.getState().noteIds.includes(noteId),
+  add: (noteId: string) => {
+    if (!poppedOutNoteIds.has(noteId))
+      usePoppedOutNotes.setState((s) => ({ noteIds: [...s.noteIds, noteId] }));
+  },
+  delete: (noteId: string) =>
+    usePoppedOutNotes.setState((s) => ({
+      noteIds: s.noteIds.filter((id) => id !== noteId)
+    })),
+  replace: (noteIds: string[]) => usePoppedOutNotes.setState({ noteIds })
+};
